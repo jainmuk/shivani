@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>CA Shivani Jain - Tax & GST Consultant</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: #f5f7fb;
+      color: #222;
+    }
+
+    header {
+      background: #283593;
+      color: #fff;
+      padding: 20px 10%;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    header p {
+      margin: 5px 0 0;
+      font-size: 14px;
+    }
+
+    main {
+      padding: 30px 10%;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    h2 {
+      color: #283593;
+      margin-top: 0;
+    }
+
+    .services, .contact {
+      background: #fff;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+
+    .services ul {
+      padding-left: 18px;
+    }
+
+    .contact p {
+      margin: 5px 0;
+    }
+
+    .contact a {
+      color: #1565c0;
+      text-decoration: none;
+    }
+
+    .contact a:hover {
+      text-decoration: underline;
+    }
+
+    /* Chatbot widget */
+    .chatbot-toggle {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #283593;
+      color: #fff;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+      font-size: 28px;
+      z-index: 999;
+    }
+
+    .chatbot-window {
+      position: fixed;
+      bottom: 90px;
+      right: 20px;
+      width: 320px;
+      max-width: 90vw;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 3px 12px rgba(0,0,0,0.25);
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 1000;
+    }
+
+    .chatbot-header {
+      background: #283593;
+      color: #fff;
+      padding: 10px 12px;
+      font-size: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .chatbot-header span {
+      font-weight: bold;
+    }
+
+    .chatbot-close {
+      cursor: pointer;
+      font-size: 18px;
+    }
+
+    .chatbot-body {
+      padding: 10px 12px;
+      font-size: 13px;
+      max-height: 320px;
+      overflow-y: auto;
+      background: #f5f7fb;
+    }
+
+    .chatbot-message {
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+
+    .chatbot-message.bot {
+      text-align: left;
+    }
+
+    .chatbot-message.user {
+      text-align: right;
+      color: #283593;
+      font-weight: 600;
+    }
+
+    .chatbot-form {
+      padding: 8px 10px;
+      background: #fff;
+      border-top: 1px solid #ddd;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .chatbot-form label {
+      font-size: 11px;
+      margin-bottom: 2px;
+    }
+
+    .chatbot-form input,
+    .chatbot-form select,
+    .chatbot-form textarea {
+      width: 100%;
+      padding: 6px 8px;
+      font-size: 12px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+
+    .chatbot-form textarea {
+      resize: vertical;
+      min-height: 50px;
+    }
+
+    .chatbot-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .chatbot-actions button {
+      flex: 1;
+      padding: 7px 0;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .btn-email {
+      background: #283593;
+      color: #fff;
+    }
+
+    .btn-whatsapp {
+      background: #25D366;
+      color: #fff;
+    }
+
+    .btn-email:hover {
+      background: #1a237e;
+    }
+
+    .btn-whatsapp:hover {
+      background: #1da653;
+    }
+
+    footer {
+      text-align: center;
+      padding: 15px 10%;
+      font-size: 12px;
+      color: #666;
+    }
+  </style>
+  <script>
+  // ... keep the existing DOM code and message builder ...
+
+  const chatHistory = [];
+
+  async function askGemini(question) {
+    const response = await fetch("http://localhost:3000/api/tax-chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: question, history: chatHistory }),
+    });
+    const data = await response.json();
+    if (data.reply) {
+      chatHistory.push({ role: "user", parts: [{ text: question }] });
+      chatHistory.push({ role: "model", parts: [{ text: data.reply }] });
+      return data.reply;
+    }
+    throw new Error("No reply from server");
+  }
+
+  function appendBotMessage(text) {
+    const div = document.createElement("div");
+    div.className = "chatbot-message bot";
+    div.textContent = text;
+    chatbotBody.appendChild(div);
+    chatbotBody.scrollTop = chatbotBody.scrollHeight;
+  }
+
+  // Example: when user clicks Send Email or a new "Ask AI" button
+  document.getElementById("sendEmailBtn").addEventListener("click", async () => {
+    const question = buildMessage();
+    appendUserMessage(question);
+    try {
+      const answer = await askGemini(question);
+      appendBotMessage(answer);
+    } catch (e) {
+      appendBotMessage("Sorry, there was an error getting an answer. Please try again.");
+    }
+    // existing email logic can remain if you still want email
+  });
+</script>
+</head>
+<body>
+
+<header>
+  <h1>CA Shivani Jain</h1>
+  <p>Chartered Accountant & Tax Consultant | GST • Audit • Taxation • Compliance</p>
+</header>
+
+<main>
+  <section class="services">
+    <h2>Professional Services</h2>
+    <p>CA Shivani Jain provides end‑to‑end compliance and advisory support for individuals, professionals, and businesses.</p>
+    <ul>
+      <li>GST registration, returns filing, and advisory</li>
+      <li>Statutory and internal audit</li>
+      <li>Balance sheet and financial statement preparation</li>
+      <li>TDS calculation, deduction, and return filing</li>
+      <li>Income tax return preparation and filing</li>
+      <li>Tax refund assistance and tax planning</li>
+      <li>Other accounting and compliance services</li>
+    </ul>
+  </section>
+
+  <section class="contact">
+    <h2>Contact Details</h2>
+    <p><strong>Phone / WhatsApp:</strong> <a href="tel:+919373364451">+91-9373364451</a></p>
+    <p><strong>Email:</strong> <a href="mailto:contactcashivanijain@gmail.com">contactcashivanijain@gmail.com</a></p>
+  </section>
+</main>
+
+<!-- Floating Chatbot Button -->
+<div class="chatbot-toggle" id="chatbotToggle" title="Chat with CA Shivani Jain">
+  💬
+</div>
+
+<!-- Chatbot Window -->
+<div class="chatbot-window" id="chatbotWindow">
+  <div class="chatbot-header">
+    <span>Chat with CA Shivani Jain</span>
+    <span class="chatbot-close" id="chatbotClose">&times;</span>
+  </div>
+  <div class="chatbot-body" id="chatbotBody">
+    <div class="chatbot-message bot">
+      Hello! Please share a few details and choose Email or WhatsApp to send your query.
+    </div>
+  </div>
+  <form class="chatbot-form" id="chatbotForm">
+    <div>
+      <label for="cbName">Your Name</label>
+      <input type="text" id="cbName" name="cbName" placeholder="Enter your name" required />
+    </div>
+    <div>
+      <label for="cbService">Required Service</label>
+      <select id="cbService" name="cbService" required>
+        <option value="">Select a service</option>
+        <option value="GST">GST</option>
+        <option value="Audit">Audit</option>
+        <option value="Balance Sheet">Balance Sheet Preparation</option>
+        <option value="TDS">TDS</option>
+        <option value="Tax Return">Tax Return Filing</option>
+        <option value="Tax Refund">Tax Refund</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+    <div>
+      <label for="cbMessage">Brief Message</label>
+      <textarea id="cbMessage" name="cbMessage" placeholder="Describe your query"></textarea>
+    </div>
+    <div>
+      <label for="cbContact">Your Email / Phone</label>
+      <input type="text" id="cbContact" name="cbContact" placeholder="For reply (email or mobile)" />
+    </div>
+    <div class="chatbot-actions">
+      <!-- Ask AI Button -->
+      <button type="button" class="btn-ai" id="askAIBtn" style="background:#ffb300;color:#222;">Ask AI</button>
+      <!-- Email via mailto -->
+      <button type="button" class="btn-email" id="sendEmailBtn">Send Email</button>
+      <!-- WhatsApp Click-to-Chat -->
+      <button type="button" class="btn-whatsapp" id="sendWhatsappBtn">WhatsApp</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  // Chatbot open/close
+  const chatbotToggle = document.getElementById('chatbotToggle');
+  const chatbotWindow = document.getElementById('chatbotWindow');
+  const chatbotClose = document.getElementById('chatbotClose');
+  const chatbotBody = document.getElementById('chatbotBody');
+
+  chatbotToggle.addEventListener('click', () => {
+    chatbotWindow.style.display =
+      chatbotWindow.style.display === 'flex' ? 'none' : 'flex';
+  });
+
+  chatbotClose.addEventListener('click', () => {
+    chatbotWindow.style.display = 'none';
+  });
+
+  function appendUserMessage(text) {
+    if (!text) return;
+    const div = document.createElement('div');
+    div.className = 'chatbot-message user';
+    div.textContent = text;
+    chatbotBody.appendChild(div);
+    chatbotBody.scrollTop = chatbotBody.scrollHeight;
+  }
+
+  function buildMessage() {
+    const name = document.getElementById('cbName').value.trim();
+    const service = document.getElementById('cbService').value.trim();
+    const msg = document.getElementById('cbMessage').value.trim();
+    const contact = document.getElementById('cbContact').value.trim();
+
+    let full = '';
+    if (name) full += 'Name: ' + name + '\\n';
+    if (service) full += 'Service: ' + service + '\\n';
+    if (msg) full += 'Message: ' + msg + '\\n';
+    if (contact) full += 'Preferred contact: ' + contact + '\\n';
+    return full || 'I would like to know more about your CA services.';
+  }
+
+  // Ask AI using backend
+  document.getElementById('askAIBtn').addEventListener('click', async () => {
+    const question = buildMessage();
+    appendUserMessage(question);
+    try {
+      const response = await fetch("/api/tax-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: question }),
+      });
+      const data = await response.json();
+      if (data.reply) {
+        appendBotMessage(data.reply);
+      } else {
+        appendBotMessage("Sorry, no answer received.");
+      }
+    } catch (e) {
+      appendBotMessage("Sorry, there was an error getting an answer. Please try again.");
+    }
+  });
+
+  // Send Email using mailto:
+  document.getElementById('sendEmailBtn').addEventListener('click', () => {
+    const message = buildMessage();
+    appendUserMessage('Send via Email');
+    const subject = encodeURIComponent('New consultation enquiry from website');
+    const body = encodeURIComponent(message);
+    const mailtoLink =
+      'mailto:contactcashivanijain@gmail.com?subject=' +
+      subject +
+      '&body=' +
+      body;
+    window.location.href = mailtoLink;
+  });
+
+  // Send WhatsApp using Click-to-Chat
+  document.getElementById('sendWhatsappBtn').addEventListener('click', () => {
+    const message = buildMessage();
+    appendUserMessage('Send via WhatsApp');
+    // WhatsApp Click-to-Chat format: https://wa.me/[countrycode][number]?text=[encoded message]
+    // Phone: +91-9373364451 -> 919373364451
+    const phone = '919373364451';
+    const encoded = encodeURIComponent(message);
+    const waLink = 'https://wa.me/' + phone + '?text=' + encoded;
+    window.open(waLink, '_blank');
+  });
+</script>
+
+</body>
+</html>
