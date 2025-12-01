@@ -19,13 +19,32 @@ app.use(express.static(path.join(__dirname, "public")));
 
 let ai = null;
 const useGemini = Boolean(process.env.GEMINI_API_KEY);
+const useOpenRouter = Boolean(process.env.OPENROUTER_API_KEY);
+const openRouterModel = process.env.OPENROUTER_MODEL || 'gpt-4o-mini';
 const useOpenAI = Boolean(process.env.OPENAI_API_KEY);
+
+// Log environment detection for easier debugging
+console.log('LLM env flags:', {
+  GEMINI: useGemini,
+  OPENROUTER: useOpenRouter,
+  OPENROUTER_MODEL: openRouterModel,
+  OPENAI: useOpenAI,
+});
+
 if (useGemini) {
   ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 } else {
-  console.log('GEMINI_API_KEY not found. OpenAI fallback available:', useOpenAI);
+  console.log('GEMINI_API_KEY not found. OpenRouter available:', useOpenRouter, 'OpenAI available:', useOpenAI);
 }
 
+// Per-request responder logging helper
+function logResponder(name) {
+  try {
+    console.log(`[tax-chat] Using responder: ${name}`);
+  } catch (e) {
+    // ignore logging errors
+  }
+}
 app.post("/api/tax-chat", async (req, res) => {
   try {
     const { message, history = [] } = req.body;
@@ -46,10 +65,37 @@ User question: ${message}
       });
 
       const response = await chat.sendMessage({ message: prompt });
+      logResponder('Gemini');
       return res.json({ reply: response.text });
     }
 
     // Fallback to OpenAI REST API if OPENAI_API_KEY is available
+    // Try OpenRouter if configured (acts like an OpenAI-compatible endpoint)
+    if (useOpenRouter) {
+      const openrouterResp = await fetch('https://api.openrouter.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: openRouterModel,
+          messages: [
+            { role: 'system', content: 'You are a qualified Indian tax consultant. Answer tax questions (GST, TDS, audit, income tax, refunds) in simple language. If exact legal advice or latest law changes are needed, remind users to consult CA Shivani Jain directly.' },
+            { role: 'user', content: message }
+          ],
+          max_tokens: 800,
+        }),
+      });
+
+      const orjson = await openrouterResp.json();
+      const orReply = (
+        orjson?.choices && orjson.choices.length > 0 && (orjson.choices[0].message?.content || orjson.choices[0].text)
+      ) || 'Sorry, no answer from OpenRouter.';
+      logResponder('OpenRouter');
+      return res.json({ reply: orReply });
+    }
+
     if (useOpenAI) {
       const openaiResp = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -71,6 +117,7 @@ User question: ${message}
       const reply = (
         json?.choices && json.choices.length > 0 && json.choices[0].message?.content
       ) || 'Sorry, no answer from OpenAI.';
+      logResponder('OpenAI');
       return res.json({ reply });
     }
 
@@ -95,6 +142,7 @@ User question: ${message}
     };
 
     const reply = localResponder(message);
+    logResponder('LocalResponder');
     return res.json({ reply });
   } catch (err) {
     console.error(err);
